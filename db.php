@@ -1,10 +1,25 @@
 <?php
-$link = mysqli_connect("localhost", "root", "", "gourmet_db");
 
-// Set charset to handle special characters properly
-mysqli_set_charset($link, "utf8");
-
-if($link === false){
-    die("ERROR: Could not connect. " . mysqli_connect_error());
+function getDBConnection() {
+    $link = mysqli_connect("localhost", "root", "", "webapp_db");
+    if (!$link) {
+        die("DB Connection Error: " . mysqli_connect_error());
+    }
+    mysqli_set_charset($link, "utf8");
+    return $link;
 }
-?>
+
+function sanitizeInput($link, $data) {
+    return mysqli_real_escape_string($link, trim($data));
+}
+
+/* 🔐 LOGIN KONTROLÜ BURADA */
+function requireLogin() {
+    if (
+        !isset($_SESSION['user_logged_in']) ||
+        $_SESSION['user_logged_in'] !== true
+    ) {
+        header("Location: login.php");
+        exit;
+    }
+}
