@@ -1,210 +1,124 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 session_start();
 
-require_once 'db.php';
+/* ZATEN LOGİN İSE ANA SAYFAYA GİTSİN */
+if (isset($_SESSION["login"])) {
+    header("Location: index.php");
+    exit;
+}
 
-$error = '';
+require_once "db.php";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $link = getDBConnection();
+$error = "";
 
-    $username = sanitizeInput($link, $_POST['username']);
-    $password = $_POST['password'];
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $username = trim($_POST["username"]);
+    $password = trim($_POST["password"]);
 
-    // Prepared statement to prevent SQL injection
-    $stmt = mysqli_prepare($link, "SELECT id, username, password FROM users WHERE username = ?");
-    mysqli_stmt_bind_param($stmt, "s", $username);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-
-    if ($row = mysqli_fetch_assoc($result)) {
-        // Verify password
-        if (password_verify($password, $row['password'])) {
-            $_SESSION['user_logged_in'] = true;
-            $_SESSION['user_id'] = $row['id'];
-            $_SESSION['username'] = $row['username'];
-            header("Location: index.php");
-            exit();
-        } else {
-            $error = "Invalid username or password!";
-        }
+    if ($username == "" || $password == "") {
+        $error = "Lütfen tüm alanları doldurun.";
     } else {
-        $error = "Invalid username or password!";
-    }
+        $sql = "SELECT * FROM users WHERE username='$username' AND password='$password'";
+        $result = mysqli_query($conn, $sql);
+        $user = mysqli_fetch_assoc($result);
 
-    mysqli_close($link);
+        if ($user) {
+            /* LOGIN BAŞARILI */
+            $_SESSION["login"] = true;
+            $_SESSION["username"] = $user["username"];
+
+            header("Location: index.php");
+            exit;
+        } else {
+            $error = "Kullanıcı adı veya şifre hatalı.";
+        }
+    }
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
-
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Gourmet Guide</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    <title>Login | Gourmet Guide</title>
 
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+    <style>
         body {
             font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: linear-gradient(135deg, #ff6f61, #ff9472);
+            height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            margin: 0;
         }
 
-        .login-container {
+        .login-box {
             background: white;
+            padding: 40px;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-            width: 400px;
-            max-width: 90%;
-        }
-
-        .login-header {
-            background: linear-gradient(135deg, #ff6347, #ff8566);
-            color: white;
-            padding: 40px 30px;
+            width: 320px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
             text-align: center;
         }
 
-        .login-header h1 {
-            font-size: 28px;
-            margin-bottom: 10px;
-        }
-
-        .login-header p {
-            opacity: 0.9;
-            font-size: 14px;
-        }
-
-        .login-form {
-            padding: 40px 30px;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 14px;
-            transition: all 0.3s;
-            font-family: 'Poppins', sans-serif;
-        }
-
-        .form-group input:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .error-message {
-            background: #fee;
-            color: #c33;
-            padding: 12px;
-            border-radius: 8px;
+        h2 {
             margin-bottom: 20px;
-            font-size: 14px;
-            border-left: 4px solid #c33;
         }
 
-        .login-btn {
+        input {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+        }
+
+        button {
+            background: #ff6f61;
             color: white;
             border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
+            padding: 12px;
+            width: 100%;
+            border-radius: 10px;
+            font-weight: bold;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+            font-size: 15px;
         }
 
-        .login-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+        button:hover {
+            background: #ff4f3d;
         }
 
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
-        .demo-info {
-            margin-top: 25px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 13px;
-            color: #666;
-            text-align: center;
-        }
-
-        .demo-info strong {
-            color: #333;
-            display: block;
-            margin-bottom: 8px;
+        .error {
+            background: #ffe0e0;
+            color: #b00000;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
         }
     </style>
 </head>
 
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>🍽️ GOURMET GUIDE</h1>
-            <p>Welcome back! Please login to continue</p>
-        </div>
 
-        <div class="login-form">
-            <?php if ($error): ?>
-                <div class="error-message">
-                    ⚠️ <?php echo $error; ?>
-                </div>
-            <?php endif; ?>
+<div class="login-box">
+    <h2>🍽️ Gourmet Guide</h2>
 
-            <form method="POST" action="">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required autocomplete="username">
-                </div>
+    <?php if ($error != "") { ?>
+        <div class="error"><?php echo $error; ?></div>
+    <?php } ?>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required autocomplete="current-password">
-                </div>
+    <form method="post">
+        <input type="text" name="username" placeholder="Username" autocomplete="off">
+        <input type="password" name="password" placeholder="Password">
+        <button type="submit">Login</button>
+    </form>
+</div>
 
-                <button type="submit" class="login-btn">Login</button>
-            </form>
-
-            <div class="demo-info">
-                <strong>Demo Account:</strong>
-                Username: <code>admin</code><br>
-                Password: <code>admin123</code>
-            </div>
-        </div>
-    </div>
 </body>
-
 </html>
